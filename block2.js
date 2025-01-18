@@ -16,7 +16,7 @@ const NOTIFICATION_MESSAGE_YELLOW = process.env.NOTIFICATION_MESSAGE_YELLOW || "
 const NOTIFICATION_MESSAGE_GREEN = process.env.NOTIFICATION_MESSAGE_GREEN || "Status changed to green";
 const NOTIFICATION_TIMEOUT = parseInt(process.env.NOTIFICATION_TIMEOUT) || 660000; // 11 minutes in milliseconds
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
 let notificationTimeout = null;
 let latestNotification = null;
