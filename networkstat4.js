@@ -152,24 +152,25 @@ const checkStatus = async () => {
 
     await setChannelName(newStatus);
 
-    if (newStatus !== currentStatus) {
+    // Only send a notification if the previous status is not an empty string
+    if (newStatus !== currentStatus && previousStatus !== '') {
         if (notificationTimeout) {
             clearTimeout(notificationTimeout);
         }
 
         latestNotification = getNotificationMessage(newStatus);
         const statusBeforeTimeout = currentStatus;
-        
+
         notificationTimeout = setTimeout(async () => {
             if (latestNotification) {
                 await sendNotification(latestNotification);
                 latestNotification = null;
             }
         }, NOTIFICATION_TIMEOUT);
-
-        previousStatus = currentStatus;
-        currentStatus = newStatus;
     }
+
+    previousStatus = currentStatus; // Update previousStatus here
+    currentStatus = newStatus; // Update currentStatus here
 
     const intervals = {
         status_red: FETCH_INTERVAL_RED,
