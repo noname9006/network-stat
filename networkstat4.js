@@ -40,6 +40,7 @@ let notificationTimeout = null;
 let latestNotification = null;
 let currentStatus = '';
 let previousStatus = '';
+let previousStatus_notification = 'status_green'; // New variable with default value
 
 // Utility Functions
 const formatDate = () => {
@@ -164,6 +165,7 @@ const checkStatus = async () => {
         notificationTimeout = setTimeout(async () => {
             if (latestNotification) {
                 await sendNotification(latestNotification);
+                previousStatus_notification = currentStatus; // Update previousStatus_notification after sending
                 latestNotification = null;
             }
         }, NOTIFICATION_TIMEOUT);
