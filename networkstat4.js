@@ -200,8 +200,16 @@ const handleStatusCommand = async (message) => {
             const currentBlockTime = new Date(block.timestamp);
             return (prevBlockTime - currentBlockTime) / 1000;
         });
+        
+        // Calculate the age of the latest block
+        const latestBlockTime = new Date(lastBlock.timestamp);
+        const currentTime = new Date();
+        const blockAge = Math.floor((currentTime - latestBlockTime) / 1000); // seconds
 
+        // Include the latest block age in the average block time calculation
+        timeDiffs.push(blockAge);
         const avgBlockTime = timeDiffs.reduce((a, b) => a + b, 0) / timeDiffs.length;
+
         const emptyBlockCount = blocks.filter(block => block.txCount === 0).length;
         const emptyBlocksPercentage = ((emptyBlockCount / blocks.length) * 100).toFixed(0);
 
@@ -209,7 +217,7 @@ const handleStatusCommand = async (message) => {
 ${getNotificationMessage(networkStatus)}
 
 Blocks analyzed: ${blocks.length}
-Latest block: ${lastBlock.number} (${lastBlock.txCount} transactions)
+Latest block: ${lastBlock.number} (${lastBlock.txCount} transactions), age: ${blockAge} seconds
 Average block time: ${avgBlockTime.toFixed(2)} seconds
 Empty blocks: ${emptyBlockCount} (${emptyBlocksPercentage}%)
 ${CUSTOM_MESSAGE_LINE}`;
