@@ -3,21 +3,6 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const axios = require('axios');
 
 // Environment variables and constants
-const REQUIRED_ENV_VARS = [
-    'TOKEN', 'STATUS_CHANNEL_ID', 'NOTIFICATION_CHANNEL_ID', 'STATUS_COMMAND',
-    'STATUS_RED_NAME', 'STATUS_YELLOW_NAME', 'STATUS_GREEN_NAME', 'FETCH_INTERVAL_RED',
-    'FETCH_INTERVAL_YELLOW', 'FETCH_INTERVAL_GREEN', 'NOTIFICATION_MESSAGE_RED',
-    'NOTIFICATION_MESSAGE_YELLOW', 'NOTIFICATION_MESSAGE_GREEN', 'NOTIFICATION_TIMEOUT',
-    'STATUS_COMMAND_CHANNELS', 'CUSTOM_MESSAGE_LINE'
-];
-
-REQUIRED_ENV_VARS.forEach(envVar => {
-    if (!process.env[envVar]) {
-        console.error(`Environment variable ${envVar} is not defined`);
-        process.exit(1);
-    }
-});
-
 const TOKEN = process.env.TOKEN;
 const STATUS_CHANNELS = process.env.STATUS_CHANNEL_ID
     ? process.env.STATUS_CHANNEL_ID.split(',').filter(id => id.trim().length > 0)
@@ -125,12 +110,15 @@ const getStatusName = (status) => {
 };
 
 const getNotificationMessage = (status) => {
+    log(`Getting notification message for status: ${status}`);
     const messageMap = {
         status_red: NOTIFICATION_MESSAGE_RED,
         status_yellow: NOTIFICATION_MESSAGE_YELLOW,
         status_green: NOTIFICATION_MESSAGE_GREEN
     };
-    return messageMap[status] || '';
+    const message = messageMap[status] || '';
+    log(`Retrieved message: ${message}`);
+    return message;
 };
 
 // Channel Management Functions
@@ -162,12 +150,16 @@ const setChannelName = async (status) => {
 };
 
 const sendNotification = async (status) => {
+    log(`Preparing notification for status: ${status}`);
     const message = getNotificationMessage(status);
+    log(`Status message: ${message}`);
     const finalMessage = `${message}\n${CUSTOM_MESSAGE_LINE}`;
+    log(`Final message to be sent: ${finalMessage}`);
     
     logStateChange('SENDING_NOTIFICATION', {
         'Status': status,
         'Message': message,
+        'Final Message': finalMessage,
         'Channels': NOTIFICATION_CHANNELS.join(', ')
     });
     
@@ -220,7 +212,7 @@ const checkStatus = async () => {
 
     // Initialize lastSentNotification if it is null
     if (lastSentNotification === null) {
-        lastSentNotification = getNotificationMessage(newStatus);
+        lastSentNotification = newStatus; // Store the status, not the message
         log(`Initialized lastSentNotification to: ${lastSentNotification}`);
     }
 
@@ -238,27 +230,27 @@ const checkStatus = async () => {
             log('Previous notification timeout cleared');
         }
 
-        latestNotification = getNotificationMessage(newStatus);
+        latestNotification = newStatus; // Store the status, not the message
         
         logStateChange('NOTIFICATION_DECISION', {
-            'Latest Notification': latestNotification,
-            'Last Sent Notification': lastSentNotification,
+            'Latest Status': latestNotification,
+            'Last Sent Status': lastSentNotification,
             'Will Send': latestNotification !== lastSentNotification,
             'Timeout Period': `${NOTIFICATION_TIMEOUT}ms`
         });
         
         if (latestNotification !== lastSentNotification) {
-            log('Setting notification timeout - messages are different');
+            log('Setting notification timeout - status has changed');
             notificationTimeout = setTimeout(async () => {
                 logStateChange('TIMEOUT_TRIGGERED', {
-                    'Latest Notification': latestNotification,
-                    'Last Sent Notification': lastSentNotification,
+                    'Latest Status': latestNotification,
+                    'Last Sent Status': lastSentNotification,
                     'Current Status': currentStatus,
                     'Time Since State Change': `${(new Date() - stateChangeTime) / 1000}s`
                 });
                 
                 if (latestNotification && latestNotification !== lastSentNotification) {
-                    await sendNotification(latestNotification);
+                    await sendNotification(latestNotification); // Pass the status
                     previousStatus_notification = currentStatus;
                     lastSentNotification = latestNotification;
                     log(`Last sent notification updated to: ${latestNotification}`);
@@ -266,14 +258,14 @@ const checkStatus = async () => {
                     log('Latest notification cleared');
                 } else {
                     logStateChange('NOTIFICATION_SKIPPED', {
-                        'Latest Notification': latestNotification,
+                        'Latest Status': latestNotification,
                         'Last Sent': lastSentNotification,
                         'Reason': latestNotification === lastSentNotification ? 'Duplicate notification' : 'Notification cleared'
                     });
                 }
             }, NOTIFICATION_TIMEOUT);
         } else {
-            log('Notification skipped - message matches last sent notification');
+            log('Notification skipped - status matches last sent notification');
             latestNotification = null;
             log('Latest notification cleared');
         }
