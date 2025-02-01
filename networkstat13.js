@@ -71,14 +71,16 @@ async function startBot() {
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     const log = (message, error = false) => {
-        const timestamp = formatDate();
-        const logMessage = `[${timestamp}] ${message}`;
-        if (error) {
-            console.error(chalk.red(logMessage));
-        } else {
-            console.log(logMessage);
-        }
-    };
+  const timestamp = formatDate();
+  const logMessage = `[${timestamp}] ${message.trim()}`;
+  // Use console.log which automatically adds a newline
+  if (error) {
+    // Optionally add error styling if needed
+    console.log(chalk.red(logMessage));
+  } else {
+    console.log(logMessage);
+  }
+};
 
     const logStateChange = (context, details) => {
         const timestamp = formatDate();
@@ -279,7 +281,7 @@ const log = (message, error = false) => {
     
     // If you have a custom message line to include in the embed, you can add it as a field
     if (CUSTOM_MESSAGE_LINE) {
-        embed.description = CUSTOM_MESSAGE_LINE;
+        embed.description = 'Block explorer: ' + CUSTOM_MESSAGE_LINE;
     }
 
     // Send to global notification channels
