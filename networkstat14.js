@@ -123,40 +123,42 @@ async function startBot() {
         log(`Loaded configurations for ${guildConfigs.size} guilds`);
     };
 
-    // Function to validate all channels
-    const validateAllChannels = async () => {
-        log('Starting periodic channel validation...');
-        
-        // Validate status channels
-        for (const channelId of STATUS_CHANNELS) {
-            try {
-                const channel = await client.channels.fetch(channelId.trim());
-                log(`[√] Status channel ${chalk.yellowBright(channel.name)} (${channelId}) validated for Guild ${chalk.cyanBright(channel.guild.name)} (${channel.guild.id})`);
-            } catch (error) {
-                log(`[×] Invalid status channel ${channelId}: ${error.message}`, true);
-            }
+// Function to validate all channels
+const validateAllChannels = async () => {
+    log('Starting periodic channel validation...');
+    
+    // Validate status channels
+    for (const channelId of STATUS_CHANNELS) {
+        try {
+            const channel = await client.channels.fetch(channelId.trim());
+            log(`[√] Status channel ${chalk.yellowBright(channel.name)} (${channelId}) validated`);
+        } catch (error) {
+            log(`[×] Invalid status channel ${channelId}: ${error.message}`, true);
         }
+    }
 
-        // Validate notification channels
-        for (const channelId of NOTIFICATION_CHANNELS) {
-            try {
-                const channel = await client.channels.fetch(channelId.trim());
-                log(`[√] Notification channel ${chalk.yellowBright(channel.name)} (${channelId}) validated for Guild ${chalk.cyanBright(channel.guild.name)} (${channel.guild.id})`);
-            } catch (error) {
-                log(`[×] Invalid notification channel ${channelId}: ${error.message}`, true);
-            }
+    // Validate notification channels
+    for (const channelId of NOTIFICATION_CHANNELS) {
+        try {
+            const channel = await client.channels.fetch(channelId.trim());
+            log(`[√] Notification channel ${chalk.yellowBright(channel.name)} (${channelId}) validated`);
+        } catch (error) {
+            log(`[×] Invalid notification channel ${channelId}: ${error.message}`, true);
         }
+    }
 
-        // Validate guild-specific channels
-        for (const [guildId, config] of guildConfigs.entries()) {
-            log(`Validating channels for Guild ${chalk.cyanBright(guildId)}...`);
+    // Validate guild-specific channels
+    for (const [guildId, config] of guildConfigs.entries()) {
+        try {
+            const guild = await client.guilds.fetch(guildId);
+            log(`Validating channels for Guild ${chalk.cyanBright(guild.name)} (${guildId})...`);
             
             if (config.statusChannelId) {
                 try {
                     const channel = await client.channels.fetch(config.statusChannelId);
-                    log(`[√] Guild status channel ${chalk.yellowBright(channel.name)} (${config.statusChannelId}) validated for Guild ${chalk.cyanBright(channel.guild.name)} (${channel.guild.id})`);
+                    log(`[√] Guild status channel ${chalk.yellowBright(channel.name)} (${config.statusChannelId}) validated`);
                 } catch (error) {
-                    log(`[×] Invalid guild status channel ${config.statusChannelId} for Guild ${chalk.cyanBright(guildId)}: ${error.message}`, true);
+                    log(`[×] Invalid guild status channel ${config.statusChannelId}: ${error.message}`, true);
                 }
             }
 
@@ -164,15 +166,18 @@ async function startBot() {
                 for (const channelId of config.notificationChannelIds) {
                     try {
                         const channel = await client.channels.fetch(channelId);
-                        log(`[√] Guild notification channel ${chalk.yellowBright(channel.name)} (${channelId}) validated for Guild ${chalk.cyanBright(channel.guild.name)} (${channel.guild.id})`);
+                        log(`[√] Guild notification channel ${chalk.yellowBright(channel.name)} (${channelId}) validated`);
                     } catch (error) {
-                        log(`[×] Invalid guild notification channel ${channelId} for Guild ${chalk.cyanBright(guildId)}: ${error.message}`, true);
+                        log(`[×] Invalid guild notification channel ${channelId}: ${error.message}`, true);
                     }
                 }
             }
+        } catch (error) {
+            log(`[×] Could not fetch guild ${guildId}: ${error.message}`, true);
         }
-        log('Channel validation completed');
-    };
+    }
+    log('Channel validation completed');
+};
 
     // Initialize Discord client
     const client = new Client({
