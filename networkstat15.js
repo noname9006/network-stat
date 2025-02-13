@@ -557,16 +557,13 @@ const validateAllChannels = async () => {
     // Event Handlers
     client.once('ready', async () => {
         log(`Logged in as ${client.user.tag}`);
-		
-		const faucet = new faucet(client);
-		await faucet.start();
-        
+		        
         // Load guild configurations
         loadGuildConfigs();
         
         // Initial channel validation
         await validateAllChannels();
-
+	
         // Set up periodic channel validation (every 24 hours)
         setInterval(validateAllChannels, 24 * 60 * 60 * 1000);
 
@@ -579,6 +576,9 @@ const validateAllChannels = async () => {
                 fetchInterval = FETCH_INTERVAL_RED;
             }
         }, fetchInterval);
+		
+				const faucet = new faucet(client);
+				await faucet.start();
     });
 
     client.on('messageCreate', async (message) => {
@@ -587,6 +587,8 @@ const validateAllChannels = async () => {
             await handleStatusCommand(message);
         }
     });
+	
+
 
     // Error Handling
     client.on('error', error => {

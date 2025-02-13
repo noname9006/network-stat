@@ -114,4 +114,4 @@ class faucet {
     }
 }
 
-module.exports = Faucet;
+module.exports = faucet;
