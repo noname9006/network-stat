@@ -215,7 +215,7 @@ const validateAllChannels = async () => {
         log(`Empty blocks: ${emptyBlockCount}`);
 
         if (timeDifference > 600) return 'status_red';
-        if (timeDifference > 60 || emptyBlockCount > 6) return 'status_yellow';
+        if (timeDifference > 60 || emptyBlockCount > 8) return 'status_yellow';
         return 'status_green';
     };
 
@@ -577,8 +577,11 @@ const validateAllChannels = async () => {
             }
         }, fetchInterval);
 		
-				const faucet = new faucet(client);
-				await faucet.start();
+    const Faucet = require('./faucet');  // Use capital F for the class
+    const faucetMonitor = new Faucet(client);  // Use a different variable name to avoid confusion
+    await faucetMonitor.start();
+	
+	    loadGuildConfigs();
     });
 
     client.on('messageCreate', async (message) => {
