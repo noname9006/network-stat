@@ -1,7 +1,7 @@
 require('dotenv').config();
 const axios = require('axios');
 
-class faucet {
+class Faucet {
     constructor(client) {
         this.client = client;
         this.currentStatus = '';
@@ -9,8 +9,8 @@ class faucet {
         this.fetchInterval = parseInt(process.env.FETCH_INTERVAL) || 60000; // default 1 minute
         this.faucetStatChannelId = process.env.FAUCET_STAT;
         this.statusNames = {
-            status_full: process.env.FAUCET_FULL_NAME,
-            status_dry: process.env.FAUCET_DRY_NAME
+            status_full: process.env.FAUCET_FULL_NAME || '🟢│faucet-full',
+            status_dry: process.env.FAUCET_DRY_NAME || '🔴│faucet-dry'
         };
         
         // Initialize chalk with default values
@@ -35,7 +35,7 @@ class faucet {
 
     log(message, error = false) {
         const timestamp = this.formatDate();
-        const logMessage = `[${timestamp}] [faucet] ${message.trim()}`;
+        const logMessage = `[${timestamp}] [Faucet] ${message.trim()}`;
         if (error) {
             console.log(this.chalk.red(logMessage));
         } else {
@@ -44,20 +44,34 @@ class faucet {
     }
 
     async fetchFaucetBalance() {
-        try {
-            const response = await axios.get(
-                'https://api.routescan.io/v2/network/testnet/evm/3636/address/0x193B74C87eFFbB5f0C78002608c8C8A60e467668/gas-balance'
-            );
-            return response.data.balance;
-        } catch (error) {
-            this.log(`Error fetching faucet balance: ${error.message}`, true);
+    try {
+        const response = await axios.get(
+            'https://api.routescan.io/v2/network/testnet/evm/3636/address/0x193B74C87eFFbB5f0C78002608c8C8A60e467668/gas-balance'
+        );
+        
+        this.log(`API Response: ${JSON.stringify(response.data)}`);
+        
+        if (!response.data?.items?.[0]?.balance) {
+            this.log('Invalid API response: missing balance value', true);
             return null;
         }
+        
+        return BigInt(response.data.items[0].balance);
+    } catch (error) {
+        this.log(`Error fetching faucet balance: ${error.message}`, true);
+        if (error.response) {
+            this.log(`API Error Response: ${JSON.stringify(error.response.data)}`, true);
+        }
+        return null;
     }
+}
 
-    determineStatus(balance) {
-        return balance > this.faucetThreshold ? 'status_full' : 'status_dry';
-    }
+determineStatus(balance) {
+    if (balance === null) return 'status_dry';
+    const thresholdWei = BigInt(this.faucetThreshold);
+    this.log(`Comparing balance ${balance} with threshold ${thresholdWei}`);
+    return balance > thresholdWei ? 'status_full' : 'status_dry';
+}
 
     async updateChannelName(status) {
         if (!this.faucetStatChannelId) {
@@ -88,20 +102,22 @@ class faucet {
     }
 
     async checkFaucetStatus() {
-        const balance = await this.fetchFaucetBalance();
-        if (balance === null) {
-            this.log('Failed to fetch balance, skipping status update', true);
-            return;
-        }
-
-        const newStatus = this.determineStatus(balance);
-        if (newStatus !== this.currentStatus) {
-            this.log(`Status changed from ${this.currentStatus || 'initial'} to ${newStatus}`);
-            this.log(`Current balance: ${balance}, Threshold: ${this.faucetThreshold}`);
-            await this.updateChannelName(newStatus);
-            this.currentStatus = newStatus;
-        }
+    const balance = await this.fetchFaucetBalance();
+    
+    // If balance is null, we should maintain the current status instead of changing to undefined
+    if (balance === null) {
+        this.log('Failed to fetch balance, maintaining current status', true);
+        return;
     }
+
+    const newStatus = this.determineStatus(balance);
+    if (newStatus !== this.currentStatus) {
+        this.log(`Status changed from ${this.currentStatus || 'initial'} to ${newStatus}`);
+        this.log(`Current balance: ${balance}, Threshold: ${this.faucetThreshold}`);
+        await this.updateChannelName(newStatus);
+        this.currentStatus = newStatus;
+    }
+}
 
     async start() {
         this.log('Starting faucet monitoring...');
@@ -114,4 +130,4 @@ class faucet {
     }
 }
 
-module.exports = faucet;
+module.exports = Faucet;
