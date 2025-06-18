@@ -1,17 +1,10 @@
-require('dotenv').config();
 const axios = require('axios');
 
 class Faucet {
-    constructor(client) {
+    constructor(client, config = null) {
         this.client = client;
+        this.config = config || require('./config');
         this.currentStatus = '';
-        this.faucetThreshold = parseFloat(process.env.FAUCET_THRESHOLD) || 0;
-        this.fetchInterval = parseInt(process.env.FETCH_INTERVAL) || 60000; // default 1 minute
-        this.faucetStatChannelId = process.env.FAUCET_STAT;
-        this.statusNames = {
-            status_full: process.env.FAUCET_FULL_NAME || '🟢│faucet-full',
-            status_dry: process.env.FAUCET_DRY_NAME || '🔴│faucet-dry'
-        };
         
         // Initialize chalk with default values
         this.chalk = {
@@ -44,49 +37,46 @@ class Faucet {
     }
 
     async fetchFaucetBalance() {
-    try {
-        const response = await axios.get(
-            'https://api.routescan.io/v2/network/testnet/evm/3636/address/0x193B74C87eFFbB5f0C78002608c8C8A60e467668/gas-balance'
-        );
-        
-        this.log(`API Response: ${JSON.stringify(response.data)}`);
-        
-        if (!response.data?.items?.[0]?.balance) {
-            this.log('Invalid API response: missing balance value', true);
+        try {
+            const response = await axios.get(this.config.getApiUrl('faucet'));
+            
+            this.log(`API Response: ${JSON.stringify(response.data)}`);
+            
+            if (!response.data?.items?.[0]?.balance) {
+                this.log('Invalid API response: missing balance value', true);
+                return null;
+            }
+            
+            return BigInt(response.data.items[0].balance);
+        } catch (error) {
+            this.log(`Error fetching faucet balance: ${error.message}`, true);
+            if (error.response) {
+                this.log(`API Error Response: ${JSON.stringify(error.response.data)}`, true);
+            }
             return null;
         }
-        
-        return BigInt(response.data.items[0].balance);
-    } catch (error) {
-        this.log(`Error fetching faucet balance: ${error.message}`, true);
-        if (error.response) {
-            this.log(`API Error Response: ${JSON.stringify(error.response.data)}`, true);
-        }
-        return null;
     }
-}
 
-determineStatus(balance) {
-    if (balance === null) return 'status_dry';
-    const thresholdWei = BigInt(this.faucetThreshold);
-    this.log(`Comparing balance ${balance} with threshold ${thresholdWei}`);
-    return balance > thresholdWei ? 'status_full' : 'status_dry';
-}
+    determineStatus(balance) {
+        if (balance === null) return 'dry';
+        this.log(`Comparing balance ${balance} with threshold ${this.config.faucet.threshold}`);
+        return balance > this.config.faucet.threshold ? 'full' : 'dry';
+    }
 
     async updateChannelName(status) {
-        if (!this.faucetStatChannelId) {
+        if (!this.config.faucet.channelId) {
             this.log('No faucet status channel ID configured', true);
             return;
         }
 
         try {
-            const channel = await this.client.channels.fetch(this.faucetStatChannelId);
+            const channel = await this.client.channels.fetch(this.config.faucet.channelId);
             if (!channel) {
-                this.log(`Cannot access channel ${this.faucetStatChannelId}`, true);
+                this.log(`Cannot access channel ${this.config.faucet.channelId}`, true);
                 return;
             }
 
-            const newName = this.statusNames[status];
+            const newName = this.config.faucet.statusNames[status];
             if (!newName) {
                 this.log(`No channel name configured for status: ${status}`, true);
                 return;
@@ -102,31 +92,32 @@ determineStatus(balance) {
     }
 
     async checkFaucetStatus() {
-    const balance = await this.fetchFaucetBalance();
-    
-    // If balance is null, we should maintain the current status instead of changing to undefined
-    if (balance === null) {
-        this.log('Failed to fetch balance, maintaining current status', true);
-        return;
-    }
+        const balance = await this.fetchFaucetBalance();
+        
+        // If balance is null, we should maintain the current status instead of changing to undefined
+        if (balance === null) {
+            this.log('Failed to fetch balance, maintaining current status', true);
+            return;
+        }
 
-    const newStatus = this.determineStatus(balance);
-    if (newStatus !== this.currentStatus) {
-        this.log(`Status changed from ${this.currentStatus || 'initial'} to ${newStatus}`);
-        this.log(`Current balance: ${balance}, Threshold: ${this.faucetThreshold}`);
-        await this.updateChannelName(newStatus);
-        this.currentStatus = newStatus;
+        const newStatus = this.determineStatus(balance);
+        if (newStatus !== this.currentStatus) {
+            this.log(`Status changed from ${this.currentStatus || 'initial'} to ${newStatus}`);
+            this.log(`Current balance: ${balance}, Threshold: ${this.config.faucet.threshold}`);
+            await this.updateChannelName(newStatus);
+            this.currentStatus = newStatus;
+        }
     }
-}
 
     async start() {
         this.log('Starting faucet monitoring...');
+        this.log(`Faucet configuration: Channel ID: ${this.config.faucet.channelId}, Threshold: ${this.config.faucet.threshold}, Interval: ${this.config.faucet.fetchInterval}ms`);
         
         // Perform initial check
         await this.checkFaucetStatus();
 
         // Set up interval for periodic checks
-        setInterval(() => this.checkFaucetStatus(), this.fetchInterval);
+        setInterval(() => this.checkFaucetStatus(), this.config.faucet.fetchInterval);
     }
 }
 
