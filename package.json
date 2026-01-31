@@ -1,0 +1,25 @@
+{
+  "name": "network-stat",
+  "version": "1.0.0",
+  "description": "Discord bot for monitoring blockchain network status",
+  "main": "networkstat.js",
+  "scripts": {
+    "start": "node networkstat.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "blockchain",
+    "network",
+    "monitoring"
+  ],
+  "dependencies": {
+    "axios": "^1.6.0",
+    "chalk": "^5.3.0",
+    "discord.js": "^14.14.0",
+    "dotenv": "^16.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
